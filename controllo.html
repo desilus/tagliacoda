@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Controllo Coda</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 60px; }
+    #numero { font-size: 120px; margin-bottom: 20px; }
+    button { font-size: 26px; padding: 14px 28px; margin: 8px; }
+    input { font-size: 18px; padding: 10px; width: 280px; margin: 6px; }
+    #panel { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div id="numero">00</div>
+
+  <div id="login">
+    <div><input id="email" type="email" placeholder="Email" /></div>
+    <div><input id="password" type="password" placeholder="Password" /></div>
+    <button id="btnLogin">Login</button>
+    <div id="loginMsg"></div>
+  </div>
+
+  <div id="panel" style="display:none;">
+    <button id="avanti">Avanti</button>
+    <button id="reset">Reset</button>
+    <button id="logout">Logout</button>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const SUPABASE_URL = "https://mucolqxlfnojyuuiteeq.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y29scXhsZm5vanl1dWl0ZWVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODUxODgsImV4cCI6MjA4NDA2MTE4OH0.o9AahzEs4SEnxqZNblNvOFdybppJ-REn-_1M4aXvpek";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const elNumero = document.getElementById("numero");
+    const loginDiv = document.getElementById("login");
+    const panelDiv = document.getElementById("panel");
+    const loginMsg = document.getElementById("loginMsg");
+    const fmt = (n) => String(n).padStart(2, "0");
+
+    async function leggi() {
+      const { data } = await supabase
+        .from("queue_state")
+        .select("value")
+        .eq("id", "main")
+        .single();
+      if (data) elNumero.textContent = fmt(data.value);
+      return data?.value ?? 0;
+    }
+
+    async function avanza() {
+      const current = await leggi();
+      const next = (current + 1) % 100;
+
+      const { error } = await supabase
+        .from("queue_state")
+        .update({ value: next })
+        .eq("id", "main");
+
+      if (!error) elNumero.textContent = fmt(next);
+      else alert("Errore update (sei loggato?)");
+    }
+
+    async function reset() {
+      const { error } = await supabase
+        .from("queue_state")
+        .update({ value: 0 })
+        .eq("id", "main");
+      if (!error) elNumero.textContent = "00";
+    }
+
+    async function refreshAuthUI() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        loginDiv.style.display = "none";
+        panelDiv.style.display = "block";
+      } else {
+        loginDiv.style.display = "block";
+        panelDiv.style.display = "none";
+      }
+    }
+
+    document.getElementById("btnLogin").addEventListener("click", async () => {
+      loginMsg.textContent = "";
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) loginMsg.textContent = "Login fallito: " + error.message;
+      await refreshAuthUI();
+    });
+
+    document.getElementById("logout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      await refreshAuthUI();
+    });
+
+    document.getElementById("avanti").addEventListener("click", avanza);
+    document.getElementById("reset").addEventListener("click", reset);
+
+    // init
+    await refreshAuthUI();
+    await leggi();
+    setInterval(leggi, 1000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Display Coda</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 80px; color: red; }
+    #numero { font-size: 220px; }
+  </style>
+</head>
+<body>
+  <div id="numero">00</div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const SUPABASE_URL = "https://mucolqxlfnojyuuiteeq.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11Y29scXhsZm5vanl1dWl0ZWVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODUxODgsImV4cCI6MjA4NDA2MTE4OH0.o9AahzEs4SEnxqZNblNvOFdybppJ-REn-_1M4aXvpek";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const el = document.getElementById("numero");
+    const fmt = (n) => String(n).padStart(2, "0");
+
+    async function leggi() {
+      const { data, error } = await supabase
+        .from("queue_state")
+        .select("value")
+        .eq("id", "main")
+        .single();
+
+      if (!error && data) el.textContent = fmt(data.value);
+    }
+
+    leggi();
+    setInterval(leggi, 500);
+  </script>
+</body>
+</html>
