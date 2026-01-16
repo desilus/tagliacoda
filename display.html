@@ -7,10 +7,17 @@
   <style>
     body { font-family: sans-serif; text-align: center; margin-top: 80px; color: red; }
     #numero { font-size: 220px; }
+    #hint {
+      color: #777;
+      font-size: 18px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div id="numero">00</div>
+  <div id="hint">Clicca per attivare l’audio</div>
 
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
@@ -20,16 +27,46 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const el = document.getElementById("numero");
+    const hint = document.getElementById("hint");
     const fmt = (n) => String(n).padStart(2, "0");
 
+    let ultimo = null;
+    let audioUnlocked = false;
+    const audio = new Audio("dingdong.mp3"); // carica beep.mp3 nella stessa cartella
+
+    async function unlockAudio() {
+      try {
+        audio.muted = true;
+        await audio.play();
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+        audioUnlocked = true;
+        hint.textContent = "Audio attivo ✅";
+      } catch {}
+    }
+
+    document.addEventListener("click", unlockAudio, { once: true });
+    hint.addEventListener("click", unlockAudio, { once: true });
+
     async function leggi() {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("queue_state")
         .select("value")
         .eq("id", "main")
         .single();
 
-      if (!error && data) el.textContent = fmt(data.value);
+      if (!data) return;
+
+      const attuale = fmt(data.value);
+
+      if (ultimo !== null && attuale !== ultimo && audioUnlocked) {
+        audio.currentTime = 0;
+        audio.play();
+      }
+
+      el.textContent = attuale;
+      ultimo = attuale;
     }
 
     leggi();
