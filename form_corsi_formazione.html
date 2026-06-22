@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iscrizione Corsi di Formazione</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #1B2A4A;
+    --navy-light: #253660;
+    --blue: #2E6BE6;
+    --blue-light: #EAF0FD;
+    --blue-mid: #C2D5FB;
+    --success: #16A34A;
+    --success-light: #DCFCE7;
+    --danger: #DC2626;
+    --gray-50: #F5F7FA;
+    --gray-100: #E8ECF2;
+    --gray-300: #C1C9D8;
+    --gray-500: #6B7A99;
+    --gray-700: #3A4560;
+    --white: #FFFFFF;
+    --shadow-sm: 0 1px 3px rgba(27,42,74,0.08);
+    --shadow-md: 0 4px 16px rgba(27,42,74,0.12);
+    --shadow-lg: 0 12px 40px rgba(27,42,74,0.18);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--navy); min-height: 100vh; }
+
+  header {
+    background: var(--navy);
+    padding: 20px 40px;
+    display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: var(--shadow-md);
+  }
+  .logo-mark { width: 40px; height: 40px; background: var(--blue); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  header h1 { color: var(--white); font-size: 18px; font-weight: 600; }
+  header p  { color: var(--gray-300); font-size: 13px; }
+
+  .import-banner {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-100);
+    padding: 14px 40px;
+    display: none; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .import-banner.admin-visible { display: flex; }
+  .import-label { font-size: 13px; font-weight: 600; color: var(--navy); white-space: nowrap; }
+  .import-label span { color: var(--gray-500); font-weight: 400; margin-left: 6px; }
+  .import-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--blue); color: var(--white);
+    border: none; border-radius: var(--radius-sm);
+    padding: 8px 16px; font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s; white-space: nowrap;
+  }
+  .import-btn:hover { background: #1d55c4; }
+  .import-btn-secondary {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--white); color: var(--navy);
+    border: 1.5px solid var(--gray-100); border-radius: var(--radius-sm);
+    padding: 8px 14px; font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; white-space: nowrap;
+  }
+  .import-btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
+  #file-input { display: none; }
+  .import-status { font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 20px; display: none; }
+  .import-status.ok  { background: var(--success-light); color: var(--success); display: inline-flex; align-items: center; gap: 5px; }
+  .import-status.err { background: #FEE2E2; color: var(--danger); display: inline-flex; align-items: center; gap: 5px; }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 0; min-height: calc(100vh - 80px); }
+
+  .sidebar {
+    background: var(--white); border-right: 1px solid var(--gray-100);
+    padding: 28px 0; position: sticky; top: 80px;
+    height: calc(100vh - 80px); overflow-y: auto;
+  }
+  .sidebar-title { padding: 0 20px 16px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-500); }
+  .cat-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; cursor: pointer; transition: all .15s;
+    border-left: 3px solid transparent; font-size: 13.5px; font-weight: 500; color: var(--gray-700);
+  }
+  .cat-nav-item:hover { background: var(--gray-50); color: var(--blue); }
+  .cat-nav-item.active { background: var(--blue-light); border-left-color: var(--blue); color: var(--blue); }
+  .cat-nav-item .badge { margin-left: auto; background: var(--blue); color: var(--white); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 20px; display: none; }
+  .cat-nav-item .badge.visible { display: block; }
+  .sidebar-divider { margin: 16px 20px; border: none; border-top: 1px solid var(--gray-100); }
+  .cart-summary-mini { padding: 0 20px; }
+  .cart-summary-mini h3 { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-500); margin-bottom: 10px; }
+  .cart-empty { font-size: 13px; color: var(--gray-300); }
+  .cart-chip { display: flex; align-items: center; justify-content: space-between; background: var(--gray-50); border: 1px solid var(--gray-100); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; color: var(--gray-700); }
+  .cart-chip strong { font-weight: 600; color: var(--navy); font-size: 11px; display: block; }
+  .cart-chip .persons { color: var(--blue); font-weight: 600; }
+
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50vh; text-align: center; padding: 40px; color: var(--gray-300); }
+  .empty-icon { font-size: 56px; margin-bottom: 16px; }
+  .empty-state h3 { font-size: 18px; font-weight: 600; color: var(--gray-500); margin-bottom: 8px; }
+  .empty-state p  { font-size: 14px; line-height: 1.6; max-width: 320px; }
+
+  .main { padding: 32px 36px; max-width: 900px; }
+  .step-info { margin-bottom: 28px; }
+  .step-info h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .step-info p  { font-size: 14px; color: var(--gray-500); }
+
+  .category-section { margin-bottom: 32px; scroll-margin-top: 90px; }
+  .category-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .cat-icon-big { width: 40px; height: 40px; background: var(--blue-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .category-header h3 { font-size: 16px; font-weight: 700; }
+  .category-header span { font-size: 13px; color: var(--gray-500); }
+
+  .courses-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .course-card {
+    background: var(--white); border: 2px solid var(--gray-100);
+    border-radius: var(--radius); padding: 16px; cursor: pointer;
+    transition: all .2s; position: relative; overflow: hidden;
+  }
+  .course-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--blue); transform: scaleX(0); transition: transform .2s; transform-origin: left; }
+  .course-card:hover { border-color: var(--blue-mid); box-shadow: var(--shadow-sm); }
+  .course-card.selected { border-color: var(--blue); background: var(--blue-light); }
+  .course-card.selected::before { transform: scaleX(1); }
+  .card-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .custom-check { width: 20px; height: 20px; min-width: 20px; border: 2px solid var(--gray-300); border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all .2s; margin-top: 1px; background: var(--white); }
+  .course-card.selected .custom-check { background: var(--blue); border-color: var(--blue); }
+  .custom-check svg { opacity: 0; transition: opacity .15s; }
+  .course-card.selected .custom-check svg { opacity: 1; }
+  .course-name { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; }
+
+  .persons-row { display: none; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--blue-mid); }
+  .course-card.selected .persons-row { display: flex; }
+  .persons-label { font-size: 12px; font-weight: 600; color: var(--navy); flex: 1; }
+  .counter { display: flex; align-items: center; border: 1.5px solid var(--blue); border-radius: 8px; overflow: hidden; }
+  .counter-btn { width: 30px; height: 30px; background: var(--white); border: none; cursor: pointer; font-size: 16px; font-weight: 700; color: var(--blue); display: flex; align-items: center; justify-content: center; transition: background .15s; }
+  .counter-btn:hover { background: var(--blue-light); }
+  .counter-val { width: 36px; text-align: center; font-size: 14px; font-weight: 700; color: var(--navy); border: none; border-left: 1.5px solid var(--blue-mid); border-right: 1.5px solid var(--blue-mid); outline: none; background: var(--white); padding: 0; -moz-appearance: textfield; }
+  .counter-val::-webkit-inner-spin-button, .counter-val::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  .summary-overlay { display: none; position: fixed; inset: 0; background: rgba(27,42,74,.4); z-index: 200; backdrop-filter: blur(4px); }
+  .summary-overlay.open { display: flex; align-items: flex-end; justify-content: flex-end; }
+  .summary-drawer { background: var(--white); width: 460px; height: 100vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); animation: slideIn .25s ease; }
+  @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  .summary-head { background: var(--navy); padding: 24px 28px; color: var(--white); display: flex; align-items: center; justify-content: space-between; }
+  .summary-head h2 { font-size: 18px; font-weight: 700; }
+  .summary-head p  { font-size: 13px; color: var(--gray-300); margin-top: 2px; }
+  .close-btn { background: rgba(255,255,255,.12); border: none; color: var(--white); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+  .close-btn:hover { background: rgba(255,255,255,.22); }
+  .summary-body { flex: 1; overflow-y: auto; padding: 24px 28px; }
+  .summary-section { margin-bottom: 20px; }
+  .summary-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-500); margin-bottom: 10px; }
+  .summary-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--gray-50); border-radius: var(--radius-sm); margin-bottom: 6px; }
+  .summary-item-name { font-size: 13.5px; font-weight: 600; color: var(--navy); }
+  .summary-item-sub  { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+  .summary-persons-badge { background: var(--blue); color: var(--white); font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row.full { grid-template-columns: 1fr; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-700); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+  .form-group input, .form-group textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--gray-100); border-radius: var(--radius-sm); font-family: 'Inter', sans-serif; font-size: 13.5px; color: var(--navy); background: var(--white); transition: border-color .15s, box-shadow .15s; outline: none; }
+  .form-group input:focus, .form-group textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(46,107,230,.12); }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+
+  .summary-footer { padding: 20px 28px; border-top: 1px solid var(--gray-100); background: var(--white); }
+  .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .total-label { font-size: 13px; color: var(--gray-500); }
+  .total-value { font-size: 20px; font-weight: 700; color: var(--navy); }
+  .btn-confirm { width: 100%; background: var(--blue); color: var(--white); border: none; padding: 14px; border-radius: var(--radius-sm); font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-confirm:hover:not(:disabled) { background: #1d55c4; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(46,107,230,.4); }
+  .btn-confirm:disabled { background: var(--gray-300); cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* SPINNER */
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+  .btn-confirm.loading .spinner { display: block; }
+  .btn-confirm.loading .btn-label { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .fab { position: fixed; bottom: 32px; right: 32px; background: var(--navy); color: var(--white); border: none; padding: 14px 22px; border-radius: 50px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; display: none; align-items: center; gap: 10px; box-shadow: var(--shadow-lg); transition: all .2s; z-index: 150; }
+  .fab:hover { background: var(--navy-light); transform: translateY(-2px); }
+  .fab.visible { display: flex; }
+  .fab-count { background: var(--blue); color: var(--white); font-size: 12px; font-weight: 700; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+  .success-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; padding: 40px; }
+  .success-screen.show { display: flex; }
+  .form-content.hide { display: none; }
+  .success-icon { width: 80px; height: 80px; background: var(--success-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 20px; }
+  .success-screen h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+  .success-screen p  { font-size: 15px; color: var(--gray-500); max-width: 360px; line-height: 1.6; }
+  .btn-reset { margin-top: 24px; background: var(--blue); color: var(--white); border: none; padding: 12px 28px; border-radius: var(--radius-sm); font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn-reset:hover { background: #1d55c4; }
+
+  /* ERRORE INVIO */
+  .send-error { display: none; margin-top: 10px; padding: 10px 14px; background: #FEE2E2; color: var(--danger); border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; text-align: center; }
+  .send-error.show { display: block; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">🎓</div>
+  <div>
+    <h1>Corsi di Formazione</h1>
+    <p>Seleziona i corsi e il numero di partecipanti</p>
+  </div>
+</header>
+
+<div class="import-banner" id="import-banner">
+  <span class="import-label">Catalogo corsi <span>Importa il tuo file Excel con le colonne CORSI e CATEGORIA</span></span>
+  <input type="file" id="file-input" accept=".xlsx,.xls">
+  <button class="import-btn" onclick="document.getElementById('file-input').click()">📂 Importa Excel</button>
+  <button class="import-btn-secondary" onclick="downloadTemplate()">⬇️ Scarica template</button>
+  <span class="import-status" id="import-status"></span>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-title">Categorie</div>
+    <div id="cat-nav"></div>
+    <hr class="sidebar-divider">
+    <div class="cart-summary-mini">
+      <h3>Selezione attuale</h3>
+      <div id="mini-cart"><span class="cart-empty">Nessun corso selezionato</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="form-content" id="form-content">
+      <div class="step-info">
+        <h2>Scegli i tuoi corsi</h2>
+        <p>Seleziona uno o più corsi per categoria e indica il numero di partecipanti</p>
+      </div>
+      <div id="courses-container"></div>
+    </div>
+    <div class="success-screen" id="success-screen">
+      <div class="success-icon">✅</div>
+      <h2>Richiesta inviata!</h2>
+      <p>La tua iscrizione è stata registrata correttamente. Ti contatteremo al più presto.</p>
+      <button class="btn-reset" onclick="resetForm()">Nuova iscrizione</button>
+    </div>
+  </main>
+</div>
+
+<button class="fab" id="fab" onclick="openSummary()">
+  <span>Riepilogo</span>
+  <span class="fab-count" id="fab-count">0</span>
+</button>
+
+<div class="summary-overlay" id="summary-overlay" onclick="closeSummaryOnBg(event)">
+  <div class="summary-drawer">
+    <div class="summary-head">
+      <div>
+        <h2>Riepilogo iscrizione</h2>
+        <p id="summary-subtitle">0 corsi selezionati</p>
+      </div>
+      <button class="close-btn" onclick="closeSummary()">✕</button>
+    </div>
+    <div class="summary-body">
+      <div style="margin-bottom:20px">
+        <div class="form-row">
+          <div class="form-group"><label>Nome *</label><input type="text" id="f-nome" placeholder="Mario"></div>
+          <div class="form-group"><label>Cognome *</label><input type="text" id="f-cognome" placeholder="Rossi"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Azienda *</label><input type="text" id="f-azienda" placeholder="Azienda S.r.l."></div>
+          <div class="form-group"><label>Email *</label><input type="email" id="f-email" placeholder="nome@azienda.it"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Telefono</label><input type="tel" id="f-telefono" placeholder="+39 02 ..."></div>
+          <div class="form-group"><label>P. IVA / CF</label><input type="text" id="f-piva" placeholder="IT12345678901"></div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group"><label>Note</label><textarea id="f-note" placeholder="Eventuali esigenze particolari..."></textarea></div>
+        </div>
+      </div>
+      <div id="summary-sections"></div>
+    </div>
+    <div class="summary-footer">
+      <div class="total-row">
+        <span class="total-label">Totale partecipanti</span>
+        <span class="total-value" id="total-persons">0</span>
+      </div>
+      <button class="btn-confirm" id="btn-confirm" onclick="confirmForm()">
+        <span class="spinner"></span>
+        <span class="btn-label">✉️ Conferma iscrizione</span>
+      </button>
+      <div class="send-error" id="send-error">
+        Errore durante l'invio. Riprova tra qualche istante.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIGURAZIONE AIRTABLE ──────────────────────────────────────────────────
+const AIRTABLE_TOKEN   = 'patexTL5bImlwnTxC.fc92ae1ba0dec1df43173a621822e7e967026d35dca98da639aa0d2d22b4dc0f';
+const AIRTABLE_BASE_ID = 'appNQAGdhfAiigGGl';
+const AIRTABLE_TABLE   = 'Corsi';
+
+const CAT_ICONS = ['📚','🏷️','⚙️','🎯','🔬','🌍','📋','💡','🛠️','🧩','🦺','💻','🗣️'];
+let CATEGORIES = [];
+const selection = {};
+
+// ── CARICA CATALOGO DA AIRTABLE ───────────────────────────────────────────────
+async function loadCatalogo() {
+  showCatalogLoading(true);
+  try {
+    let allRecords = [];
+    let offset = null;
+    do {
+      const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Catalogo`);
+      url.searchParams.set('fields[]', 'Corso');
+      url.searchParams.set('fields[]', 'Categoria');
+      url.searchParams.set('pageSize', '100');
+      if (offset) url.searchParams.set('offset', offset);
+
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+      });
+      if (!res.ok) throw new Error('Errore caricamento catalogo');
+      const data = await res.json();
+      allRecords = allRecords.concat(data.records);
+      offset = data.offset || null;
+    } while (offset);
+
+    if (!allRecords.length) { CATEGORIES = []; showCatalogLoading(false); renderNav(); renderCourses(); return; }
+
+    // Raggruppa per categoria
+    const catMap = {}, catOrder = [];
+    allRecords.forEach(r => {
+      const corso = (r.fields.Corso || '').trim();
+      const cat   = (r.fields.Categoria || '').trim();
+      if (!corso || !cat) return;
+      if (!catMap[cat]) { catMap[cat] = []; catOrder.push(cat); }
+      catMap[cat].push({ id: r.id, name: corso });
+    });
+
+    CATEGORIES = catOrder.map((catName, idx) => ({
+      id: 'cat_' + idx,
+      icon: CAT_ICONS[idx % CAT_ICONS.length],
+      name: catName,
+      courses: catMap[catName]
+    }));
+
+  } catch(err) {
+    console.warn('Catalogo non disponibile:', err.message);
+    CATEGORIES = []; // mostra empty state
+  }
+  showCatalogLoading(false);
+  renderNav();
+  renderCourses();
+}
+
+function showCatalogLoading(on) {
+  const container = document.getElementById('courses-container');
+  if (on) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon" style="font-size:36px;animation:spin 1s linear infinite;display:inline-block">⏳</div>
+        <h3 style="margin-top:12px">Caricamento corsi...</h3>
+      </div>`;
+  }
+}
+
+// ── IMPORTAZIONE EXCEL → AIRTABLE ────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      if (!rows.length) throw new Error('File vuoto');
+      const keys = Object.keys(rows[0]);
+      const keyCorso = keys.find(k => k.trim().toUpperCase() === 'CORSI');
+      const keyCat   = keys.find(k => k.trim().toUpperCase() === 'CATEGORIA');
+      if (!keyCorso || !keyCat) throw new Error('Colonne CORSI e CATEGORIA non trovate');
+
+      const newRows = [];
+      rows.forEach(row => {
+        const corso = (row[keyCorso] || '').toString().trim();
+        const cat   = (row[keyCat]   || '').toString().trim();
+        if (!corso || !cat) return;
+        newRows.push({ fields: { Corso: corso, Categoria: cat } });
+      });
+      if (!newRows.length) throw new Error('Nessun dato valido trovato');
+
+      showStatus('ok', `⏳ Caricamento di ${newRows.length} corsi su Airtable...`, true);
+
+      // 1. Cancella tutti i record esistenti nel Catalogo
+      await clearCatalogo();
+
+      // 2. Inserisce i nuovi record a batch di 10 (limite Airtable)
+      for (let i = 0; i < newRows.length; i += 10) {
+        const batch = newRows.slice(i, i + 10);
+        const res = await fetch(
+          `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Catalogo`,
+          {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ records: batch })
+          }
+        );
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error?.message || 'Errore inserimento');
+        }
+      }
+
+      // 3. Ricarica il catalogo e aggiorna la UI
+      Object.keys(selection).forEach(k => delete selection[k]);
+      await loadCatalogo();
+      updateUI();
+      const tot = newRows.length;
+      showStatus('ok', `✓ ${tot} corsi salvati su Airtable`);
+
+    } catch(err) {
+      showStatus('err', '✕ ' + err.message);
+    }
+    e.target.value = '';
+  };
+  reader.readAsBinaryString(file);
+});
+
+async function clearCatalogo() {
+  // Recupera tutti gli ID esistenti e li cancella
+  let allIds = [];
+  let offset = null;
+  do {
+    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Catalogo`);
+    url.searchParams.set('fields[]', 'Corso');
+    url.searchParams.set('pageSize', '100');
+    if (offset) url.searchParams.set('offset', offset);
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` } });
+    const data = await res.json();
+    allIds = allIds.concat(data.records.map(r => r.id));
+    offset = data.offset || null;
+  } while (offset);
+
+  // Cancella a batch di 10
+  for (let i = 0; i < allIds.length; i += 10) {
+    const batch = allIds.slice(i, i + 10);
+    const params = batch.map(id => `records[]=${id}`).join('&');
+    await fetch(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Catalogo?${params}`,
+      { method: 'DELETE', headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` } }
+    );
+  }
+}
+
+function showStatus(type, msg, persist = false) {
+  const el = document.getElementById('import-status');
+  el.className = 'import-status ' + type;
+  el.textContent = msg;
+  if (!persist) setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
+function downloadTemplate() {
+  const wb = XLSX.utils.book_new();
+  const data = [
+    ['CORSI', 'CATEGORIA'],
+    ['Sicurezza generale – lavoratori', 'Sicurezza sul Lavoro'],
+    ['Primo soccorso aziendale', 'Sicurezza sul Lavoro'],
+    ['Microsoft Excel – Avanzato', 'Informatica e Digitale'],
+    ['Comunicazione efficace', 'Comunicazione'],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{ wch: 40 }, { wch: 28 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Corsi');
+  XLSX.writeFile(wb, 'template_corsi.xlsx');
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+
+function renderNav() {
+  const nav = document.getElementById('cat-nav');
+  if (!CATEGORIES.length) { nav.innerHTML = ''; return; }
+  nav.innerHTML = CATEGORIES.map(c => `
+    <div class="cat-nav-item" id="nav-${c.id}" onclick="scrollToCategory('${c.id}')">
+      <span>${c.icon}</span><span>${c.name}</span>
+      <span class="badge" id="badge-${c.id}">0</span>
+    </div>`).join('');
+}
+
+function renderCourses() {
+  const container = document.getElementById('courses-container');
+  if (!CATEGORIES.length) {
+    const isAdmin = new URLSearchParams(window.location.search).has('admin');
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📂</div>
+        <h3>Nessun catalogo caricato</h3>
+        <p>${isAdmin
+          ? 'Importa il tuo file Excel con le colonne <strong>CORSI</strong> e <strong>CATEGORIA</strong> per caricare i corsi su Airtable.'
+          : 'Il catalogo dei corsi non è ancora disponibile. Riprova più tardi.'
+        }</p>
+      </div>`;
+    return;
+  }
+  container.innerHTML = CATEGORIES.map(cat => `
+    <div class="category-section" id="cat-${cat.id}">
+      <div class="category-header">
+        <div class="cat-icon-big">${cat.icon}</div>
+        <div><h3>${cat.name}</h3><span>${cat.courses.length} cors${cat.courses.length===1?'o':'i'} disponibil${cat.courses.length===1?'e':'i'}</span></div>
+      </div>
+      <div class="courses-grid">${cat.courses.map(course => renderCourseCard(course, cat)).join('')}</div>
+    </div>`).join('');
+}
+
+function renderCourseCard(course, cat) {
+  return `
+    <div class="course-card" id="card-${course.id}" onclick="toggleCourse('${course.id}','${cat.id}')">
+      <div class="card-top">
+        <div class="custom-check">
+          <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+            <path d="M1 5L4.5 8.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="course-name">${course.name}</div>
+      </div>
+      <div class="persons-row" onclick="event.stopPropagation()">
+        <span class="persons-label">👥 Partecipanti</span>
+        <div class="counter">
+          <button class="counter-btn" onclick="changePersons('${course.id}',-1)">−</button>
+          <input class="counter-val" type="number" id="persons-${course.id}" value="1" min="1" max="999" onchange="setPersons('${course.id}',this.value)">
+          <button class="counter-btn" onclick="changePersons('${course.id}',1)">+</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── SELEZIONE ────────────────────────────────────────────────────────────────
+function toggleCourse(courseId, catId) {
+  const card = document.getElementById('card-' + courseId);
+  if (selection[courseId]) {
+    delete selection[courseId];
+    card.classList.remove('selected');
+  } else {
+    const cat = CATEGORIES.find(c => c.id === catId);
+    const course = cat.courses.find(c => c.id === courseId);
+    selection[courseId] = { course, category: cat, persons: 1 };
+    card.classList.add('selected');
+    document.getElementById('persons-' + courseId).value = 1;
+  }
+  updateUI();
+}
+
+function changePersons(courseId, delta) {
+  if (!selection[courseId]) return;
+  selection[courseId].persons = Math.max(1, selection[courseId].persons + delta);
+  document.getElementById('persons-' + courseId).value = selection[courseId].persons;
+  updateUI();
+}
+
+function setPersons(courseId, val) {
+  if (!selection[courseId]) return;
+  selection[courseId].persons = Math.max(1, parseInt(val) || 1);
+  document.getElementById('persons-' + courseId).value = selection[courseId].persons;
+  updateUI();
+}
+
+// ── UI ───────────────────────────────────────────────────────────────────────
+function updateUI() {
+  const count = Object.keys(selection).length;
+  document.getElementById('fab').classList.toggle('visible', count > 0);
+  document.getElementById('fab-count').textContent = count;
+
+  CATEGORIES.forEach(cat => {
+    const b = document.getElementById('badge-' + cat.id);
+    if (!b) return;
+    const n = Object.values(selection).filter(s => s.category.id === cat.id).length;
+    b.textContent = n;
+    b.classList.toggle('visible', n > 0);
+  });
+
+  const miniCart = document.getElementById('mini-cart');
+  miniCart.innerHTML = count === 0
+    ? '<span class="cart-empty">Nessun corso selezionato</span>'
+    : Object.values(selection).map(s => `
+        <div class="cart-chip">
+          <div><strong>${s.category.icon} ${s.category.name}</strong>${s.course.name}</div>
+          <span class="persons">${s.persons}p</span>
+        </div>`).join('');
+
+  renderSummary();
+}
+
+function renderSummary() {
+  const count = Object.keys(selection).length;
+  const totalPersons = Object.values(selection).reduce((a, s) => a + s.persons, 0);
+  document.getElementById('summary-subtitle').textContent =
+    count === 0 ? 'Nessun corso selezionato' : `${count} cors${count===1?'o':'i'} · ${totalPersons} partecipant${totalPersons===1?'e':'i'}`;
+  document.getElementById('total-persons').textContent = totalPersons;
+
+  const byCategory = {};
+  Object.values(selection).forEach(s => {
+    if (!byCategory[s.category.id]) byCategory[s.category.id] = { cat: s.category, items: [] };
+    byCategory[s.category.id].items.push(s);
+  });
+
+  document.getElementById('summary-sections').innerHTML = count === 0
+    ? '<p style="color:var(--gray-300);font-size:14px;text-align:center;padding:20px 0">Seleziona almeno un corso per procedere</p>'
+    : Object.values(byCategory).map(g => `
+        <div class="summary-section">
+          <div class="summary-section-title">${g.cat.icon} ${g.cat.name}</div>
+          ${g.items.map(s => `
+            <div class="summary-item">
+              <div>
+                <div class="summary-item-name">${s.course.name}</div>
+                <div class="summary-item-sub">Categoria: ${s.category.name}</div>
+              </div>
+              <span class="summary-persons-badge">${s.persons} pers.</span>
+            </div>`).join('')}
+        </div>`).join('');
+}
+
+// ── NAVIGAZIONE ──────────────────────────────────────────────────────────────
+function scrollToCategory(catId) {
+  document.getElementById('cat-' + catId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.querySelectorAll('.cat-nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('nav-' + catId)?.classList.add('active');
+}
+
+function openSummary()  { document.getElementById('summary-overlay').classList.add('open'); }
+function closeSummary() { document.getElementById('summary-overlay').classList.remove('open'); }
+function closeSummaryOnBg(e) { if (e.target === document.getElementById('summary-overlay')) closeSummary(); }
+
+// ── INVIO AD AIRTABLE ────────────────────────────────────────────────────────
+async function confirmForm() {
+  const nome    = document.getElementById('f-nome').value.trim();
+  const cognome = document.getElementById('f-cognome').value.trim();
+  const azienda = document.getElementById('f-azienda').value.trim();
+  const email   = document.getElementById('f-email').value.trim();
+
+  if (!nome || !cognome || !azienda || !email) {
+    alert('Compila almeno Nome, Cognome, Azienda ed Email prima di procedere.');
+    return;
+  }
+  if (Object.keys(selection).length === 0) {
+    alert('Seleziona almeno un corso.');
+    return;
+  }
+
+  // Costruisce stringa corsi leggibile
+  const corsiStr = Object.values(selection).map(s =>
+    `• ${s.course.name} [${s.category.name}] – ${s.persons} partecipant${s.persons===1?'e':'i'}`
+  ).join('\n');
+
+  const totalPersons = Object.values(selection).reduce((a, s) => a + s.persons, 0);
+
+  const record = {
+    fields: {
+      'Nome':                  nome,
+      'Cognome':               cognome,
+      'Azienda':               azienda,
+      'Email':                 email,
+      'Telefono':              document.getElementById('f-telefono').value.trim() || '',
+      'PIVA':                  document.getElementById('f-piva').value.trim() || '',
+      'Corsi':                 corsiStr,
+      'Totale_Partecipanti':   totalPersons,
+      'Note':                  document.getElementById('f-note').value.trim() || '',
+      'Data':                  new Date().toISOString().slice(0, 10),
+    }
+  };
+
+  // UI: loading
+  const btn = document.getElementById('btn-confirm');
+  const errBox = document.getElementById('send-error');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  errBox.classList.remove('show');
+
+  try {
+    const res = await fetch(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE)}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(record),
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `Errore ${res.status}`);
+    }
+
+    // Successo
+    closeSummary();
+    document.getElementById('form-content').classList.add('hide');
+    document.getElementById('success-screen').classList.add('show');
+    document.getElementById('fab').classList.remove('visible');
+
+  } catch (err) {
+    console.error('Airtable error:', err);
+    errBox.textContent = `Errore durante l'invio: ${err.message}`;
+    errBox.classList.add('show');
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+}
+
+// ── RESET ────────────────────────────────────────────────────────────────────
+async function resetForm() {
+  Object.keys(selection).forEach(k => delete selection[k]);
+  ['f-nome','f-cognome','f-azienda','f-email','f-telefono','f-piva','f-note'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('form-content').classList.remove('hide');
+  document.getElementById('success-screen').classList.remove('show');
+  document.getElementById('send-error').classList.remove('show');
+  await loadCatalogo();
+  updateUI();
+}
+
+// ── MODALITÀ ADMIN (?admin nell'URL) ─────────────────────────────────────────
+if (new URLSearchParams(window.location.search).has('admin')) {
+  document.getElementById('import-banner').classList.add('admin-visible');
+  document.querySelector('.layout').style.minHeight = 'calc(100vh - 130px)';
+  document.querySelector('.sidebar').style.top = '130px';
+  document.querySelector('.sidebar').style.height = 'calc(100vh - 130px)';
+}
+
+// ── START ─────────────────────────────────────────────────────────────────────
+function init() { /* nav e corsi vengono renderizzati dopo il caricamento */ }
+renderNav();
+loadCatalogo(); // carica i corsi da Airtable all'avvio
+</script>
+</body>
+</html>
